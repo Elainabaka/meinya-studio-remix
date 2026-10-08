@@ -47,10 +47,22 @@ Tuỳ chỉnh thêm: `--speed 0.9`, `--pitch -2` (đặt `--pitch` sẽ chuyển
 
 Thêm preset: tạo file trong `presets/`, kế thừa `RemixPreset` rồi đăng ký trong `presets/registry.py`.
 
-## Tính năng không có trong bản công khai
+## Khôi phục âm thanh
 
-- `--restore` (bù dải cao bị codec cắt bằng model Apollo): bản công khai không có tính năng này. Lệnh in thông báo và bỏ qua bước đó, không báo lỗi.
-- `--stems` (tách stem bằng Demucs) cần thêm `torch` và `demucs`, xem các dòng chú thích trong `requirements.txt`.
+`--restore` bù dải cao mà codec MP3 đã cắt (thường trên khoảng 16 kHz), bằng model Apollo. Chỉ phần bị cắt được thay, phần còn lại giữ nguyên. Nguồn đủ dải thì lệnh tự bỏ qua. Repo này **không** kèm mã và trọng số Apollo. Chưa cài thì lệnh in `[!] --restore: chưa cài Apollo, xem README mục Khôi phục âm thanh, bỏ qua bước bù dải cao` rồi chạy tiếp, không báo lỗi.
+
+Cài đặt (làm một lần):
+
+1. Thư viện: `pip install torch omegaconf huggingface_hub`. Torch chọn bản CPU hoặc CUDA theo hướng dẫn tại pytorch.org.
+2. Mã model: từ github.com/JusperLee/Apollo lấy `LICENSE`, `look2hear/models/apollo.py` và `look2hear/models/base_model.py`. Đặt cả ba vào thư mục `core/apollo/`, tạo thêm `core/apollo/__init__.py` rỗng.
+3. Trọng số: tải `pytorch_model.bin` từ huggingface.co/JusperLee/Apollo, đổi tên thành `apollo.bin`, đặt vào `.studio_cache/models/apollo.bin`. Code kiểm SHA-256 (`99d9af7f1ff20e63c393035513a655392818d66b4d7fc23d658175c1f15e8d76`, ghim trong `core/restore.py`) trước khi nạp; file sai thì không được dùng.
+4. Chạy: thêm cờ `--restore` vào lệnh remix như bình thường.
+
+Giấy phép: mã Apollo theo CC BY-SA 4.0 (file `LICENSE` của repo gốc). Trọng số theo giấy phép ghi trên trang model Hugging Face. Cả hai không nằm trong repo này và giữ giấy phép riêng của chúng.
+
+## Tách stem
+
+`--stems` (tách stem bằng Demucs) cần thêm `torch` và `demucs`, xem các dòng chú thích trong `requirements.txt`.
 
 ## Test
 
@@ -83,6 +95,6 @@ Command-line audio remix tool in Python. Turns a song into a Nightcore, Slowed +
 - Requirements: Python 3 (tested on 3.13, Windows), FFmpeg on `PATH`.
 - Install: `pip install -r requirements.txt`.
 - Run: `python remix_cli.py "song.mp3" --preset nightcore --output "out.wav"`, or `python remix_cli.py --list`.
-- Not included in this public version: `--restore` (Apollo model). Using it prints a notice and skips that step.
+- Audio restoration (`--restore`, Apollo model) is optional. The Apollo code and weights are not included: install steps are in the section "Khôi phục âm thanh" above. Until installed, `--restore` prints a notice and skips that step.
 - Test: `python -X utf8 -m unittest tests.test_engine -v`.
 - License: GPL-3.0, because the dependency `pedalboard` is GPLv3. Dependency licenses are listed above.

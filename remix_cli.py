@@ -117,7 +117,7 @@ def parse_args():
     parser.add_argument(
         "--restore",
         action="store_true",
-        help="Bản công khai không có tính năng này. AI high-band restoration (Apollo): rebuilds what an MP3-like codec cut off above ~16 kHz.\n"
+        help="AI high-band restoration (Apollo, optional, see README section Khôi phục âm thanh): rebuilds what an MP3-like codec cut off above ~16 kHz.\n"
              "Skipped by itself when the source is full band. Cached per song."
     )
 
@@ -196,7 +196,7 @@ def process_single_file(
         if cutoff is None:
             print("[*] --restore: source is full band, nothing to restore")
         elif not restore_available():
-            print("[!] --restore: bản công khai không có tính năng này, bỏ qua bước bù dải cao")
+            print("[!] --restore: chưa cài Apollo, xem README mục Khôi phục âm thanh, bỏ qua bước bù dải cao")
         else:
             print(f"[*] Source cut at {cutoff / 1000:.1f} kHz: restoring the band above")
             audio = audio + cached_restore(input_path, audio, sr, RESTORE_CACHE_DIR, progress_callback=on_progress)

@@ -18,6 +18,9 @@ nhạc test/
 output/
 .studio_cache/
 
+# Apollo code (CC BY-SA 4.0), downloaded by you for --restore: never commit (see README)
+core/apollo/
+
 # Secrets (OAuth, tokens)
 secret/
 .env

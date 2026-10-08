@@ -10,7 +10,7 @@ it removes 1.7-4.6 dB of the top band. So a source without a codec wall is left 
 The model treats every channel as mono, so it runs on Mid/Side: content it adds to L and R separately is
 decorrelated (delta L/R correlation ~0 against 0.3-0.8 for the songs) and would smear centred sibilance.
 
-Optional: `torch` + `omegaconf`, the model source in `core/apollo/` (github.com/JusperLee/Apollo, CC BY-SA 4.0)
+Optional: `torch` + `omegaconf` + `huggingface_hub`, the model source in `core/apollo/` (github.com/JusperLee/Apollo, CC BY-SA 4.0)
 and its weights in `.studio_cache/models/apollo.bin`. Check `restore_available()` first.
 """
 
@@ -46,11 +46,12 @@ _model = []
 def restore_available() -> bool:
     """Cheap (no torch import): the libraries, the model source and the weights are all there."""
     try:
-        if any(importlib.util.find_spec(name) is None for name in ("torch", "omegaconf")):
+        if any(importlib.util.find_spec(name) is None for name in ("torch", "omegaconf", "huggingface_hub")):
             return False
     except (ImportError, ValueError):
         return False
-    return os.path.isfile(os.path.join(MODEL_DIR, "apollo.py")) and os.path.isfile(WEIGHTS)
+    # base_model.py is imported by apollo.py: a missing copy must read as "not installed", not as a crash
+    return all(os.path.isfile(os.path.join(MODEL_DIR, name)) for name in ("apollo.py", "base_model.py")) and os.path.isfile(WEIGHTS)
 
 
 def source_cutoff(audio: np.ndarray, sample_rate: int) -> Optional[float]:
