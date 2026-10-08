@@ -123,6 +123,7 @@ class CaiTest(unittest.TestCase):
         with mock.patch.object(F, "ffmpeg_co", return_value=True):
             F.cai_ffmpeg(chay=lambda args: calls.append(list(args)))
         self.assertEqual(calls[0][:4], ["install", "-e", "--id", "Gyan.FFmpeg"])
+        self.assertEqual(calls[0][calls[0].index("--version") + 1], "8.0.1")
 
     def test_ffmpeg_cai_xong_ma_khong_thay_thi_bao_loi(self):
         with mock.patch.object(F, "ffmpeg_co", return_value=False):

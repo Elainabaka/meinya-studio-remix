@@ -73,10 +73,11 @@ FFMPEG = {
     "ten": "ffmpeg",
     "mo_ta": "Xuất MP3 và đọc các định dạng mà thư viện âm thanh không đọc được. Không có thì vẫn xuất WAV, FLAC, OGG.",
     "winget": "Gyan.FFmpeg",
+    "ban": "8.0.1",   # bản đang chạy trên máy chủ nhân; ghim để mọi máy cài đúng bản đã kiểm
     "trang": "https://ffmpeg.org/download.html",
-    "dung_luong": "khoảng 100 MB (ước tính)",
-    "nguon": "winget (gói Gyan.FFmpeg). Trang chính thức: ffmpeg.org",
-    "giay_phep": "Theo bản build của gói; xem ffmpeg.org/legal.html",
+    "dung_luong": "khoảng 234 MB tải về, khoảng 616 MB sau khi cài (đo từ bản 8.0.1)",
+    "nguon": "winget, gói Gyan.FFmpeg 8.0.1 (zip từ github.com/GyanD/codexffmpeg, winget kiểm SHA-256). Trang chính thức: ffmpeg.org",
+    "giay_phep": "GPL-3.0 (bản build full của Gyan; xem ffmpeg.org/legal.html)",
 }
 
 _khoa = threading.Lock()
@@ -217,7 +218,7 @@ def cai_ffmpeg(tien_trinh=None, chay=None):
     if chay is None and not shutil.which("winget"):
         raise RuntimeError(f"Máy chưa có winget. Tải ffmpeg tại {FFMPEG['trang']}, rồi thêm vào PATH.")
     tien("winget đang cài ffmpeg (có thể vài phút)", 0.1)
-    (chay or _winget_mac_dinh)(["install", "-e", "--id", FFMPEG["winget"],
+    (chay or _winget_mac_dinh)(["install", "-e", "--id", FFMPEG["winget"], "--version", FFMPEG["ban"],
                                 "--accept-package-agreements", "--accept-source-agreements"])
     # winget đặt ffmpeg sau shim trong WinGet\Links; app đang chạy chưa có trong PATH nên thêm vào tại đây
     links = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WinGet", "Links")

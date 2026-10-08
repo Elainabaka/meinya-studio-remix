@@ -21,7 +21,7 @@ Chạy lại sau này chỉ cần bấm `run.bat`: không cài lại gì.
 | 7 phong cách, chỉnh tốc độ, tông, reverb, bass, độ sáng, đánh trống, khử xì, độ rộng | ✅ | |
 | Nghe A/B, nghe mù, ghim bản remix, cân bằng âm lượng | ✅ | |
 | Nạp WAV, FLAC, OGG, MP3, M4A, AAC, OPUS; xuất WAV 24-bit, FLAC | ✅ | |
-| Xuất MP3 320k | | ffmpeg, khoảng 100 MB (ước tính), cài bằng winget |
+| Xuất MP3 320k | | ffmpeg 8.0.1 cài bằng winget: khoảng 234 MB tải về, khoảng 616 MB sau khi cài |
 | Tách stem AI (giọng, trống, bass, nhạc cụ) | | PyTorch + Demucs: khoảng 2,6 GB bản GPU hoặc 0,12 GB bản CPU, cộng model ~300 MB tải lần đầu (ước tính) |
 | Bù dải cao AI (phục hồi phần MP3 bị cắt) | | PyTorch + mã và trọng số Apollo: thêm khoảng 66 MB |
 
@@ -109,7 +109,7 @@ Thư viện và mã tải khi bạn bật tính năng:
 | omegaconf 2.3.1 | BSD-3-Clause |
 | huggingface_hub 1.14.0 | Apache-2.0 |
 | Mã Apollo và trọng số | CC BY-SA 4.0 (ghi trên repo gốc và trang model Hugging Face) |
-| ffmpeg (gói Gyan.FFmpeg của winget) | GPL/LGPL tùy bản build, xem ffmpeg.org/legal.html |
+| ffmpeg 8.0.1 (gói Gyan.FFmpeg của winget, bản full) | GPL-3.0, xem ffmpeg.org/legal.html |
 
 Các thành phần tải về giữ giấy phép riêng của chúng; repo này không cấp lại.
 
