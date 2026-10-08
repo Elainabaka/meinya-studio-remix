@@ -120,6 +120,11 @@ def parse_args():
         help="AI high-band restoration (Apollo, optional, see README section Khôi phục âm thanh): rebuilds what an MP3-like codec cut off above ~16 kHz.\n"
              "Skipped by itself when the source is full band. Cached per song."
     )
+    parser.add_argument(
+        "-w", "--web",
+        action="store_true",
+        help="Launch interactive Web Audio Studio (Local Web UI with A/B Compare)."
+    )
 
     return parser.parse_args()
 
@@ -289,6 +294,11 @@ def batch_process(
 
 def main():
     args = parse_args()
+
+    if args.web:
+        import web_studio
+        web_studio.run_web_studio()
+        return
 
     if args.list:
         print(BANNER)

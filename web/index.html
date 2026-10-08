@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meinya Studio</title>
+  <link rel="icon" id="favicon" href="/assets/meinya-logo.jpg">
+  <link rel="stylesheet" href="/static/studio.css">
+</head>
+<body data-tab="audio">
+  <header class="topbar">
+    <div class="brand">
+      <div class="avatar"><img class="logo" id="logo" src="/assets/meinya-logo.jpg" alt=""></div>
+      <div>
+        <div class="brand-name">MEINYA <b>STUDIO</b></div>
+        <div class="brand-sub">xưởng remix của kênh Meinya Baka</div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button data-tab="audio" class="active" role="tab"><span class="n">1</span>Âm thanh</button>
+      <button data-tab="video" role="tab"><span class="n">2</span>Video &amp; Xuất</button>
+    </nav>
+    <div class="top-right">
+      <span class="chip" id="projChip" hidden>Dự án <strong id="projName"></strong><span id="projStyle"></span></span>
+      <span class="chip" id="agyChip" title="agy tra tên gốc, ca sĩ, tâm trạng và gợi ý tiêu đề cho mỗi bài (lưu cache theo bài)"><span class="dot off" id="agyDot"></span>agy · <strong id="agyModel">đang kiểm tra</strong></span>
+    </div>
+  </header>
+
+  <div class="warnbox ffmpeg-box" id="ffmpegBox" hidden>
+    Chưa có ffmpeg: không xuất được MP3 (WAV, FLAC, OGG vẫn chạy).
+    <button class="btn sm" id="btnInstallFfmpeg">Cài bằng winget</button>
+    hoặc <a href="https://ffmpeg.org/download.html" target="_blank" rel="noopener">tải tay từ ffmpeg.org</a>
+  </div>
+
+  <!-- ================= TAB 1: ÂM THANH ================= -->
+  <main class="layout" id="tabAudio">
+    <aside class="col-left">
+      <section class="card">
+        <h2><span class="step">01</span>Bài hát</h2>
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,.opus" hidden>
+          <strong>Kéo thả file nhạc vào đây</strong>
+          <span>hoặc bấm để chọn · MP3 · WAV · FLAC · M4A · OGG · AAC · <b style="color:var(--ok)">OPUS</b></span>
+        </label>
+        <ul class="track-list" id="trackList"></ul>
+      </section>
+
+      <section class="card">
+        <h2><span class="step">02</span>Phong cách</h2>
+        <div class="preset-list" id="presetList"></div>
+      </section>
+    </aside>
+
+    <section class="col-main">
+      <section class="card player-card">
+        <div class="track-head">
+          <div class="track-title" id="trackTitle">Chưa chọn bài</div>
+          <div class="track-meta" id="trackMeta">Chọn một bài ở cột trái hoặc kéo thả file vào</div>
+        </div>
+
+        <div class="label-row">
+          <span id="overviewLabel">Toàn bài · bấm để chọn đoạn nghe thử 30 giây</span>
+          <span id="regionLabel"></span>
+        </div>
+        <canvas id="overview" class="wave overview"></canvas>
+
+        <div class="ab-row">
+          <div class="ab-switch">
+            <button id="btnA" class="ab-btn ab-a"><span class="ab-key">A</span><span class="ab-label">Bản gốc</span></button>
+            <button id="btnB" class="ab-btn ab-b active"><span class="ab-key">B</span><span class="ab-label">Remix</span></button>
+            <button id="btnC" class="ab-btn ab-c" hidden><span class="ab-key">C</span><span class="ab-label">Bản ghim</span></button>
+          </div>
+          <div class="ab-tools">
+            <button id="btnPin" class="btn sm" disabled title="Giữ bản remix này (C) để so với các bản chỉnh sau (B)">Ghim bản này</button>
+            <label class="check" title="Bản to hơn luôn nghe 'hay hơn'. Bật để hạ bản to hơn xuống cho so sánh công bằng.">
+              <input type="checkbox" id="loudMatch" checked> Cân bằng âm lượng
+            </label>
+          </div>
+        </div>
+
+        <div class="blind-row" id="blindRow" hidden>
+          <div class="pin-info" id="pinInfo"></div>
+          <div class="blind-controls">
+            <label class="check" title="B và C đổi thành 1 và 2 theo thứ tự ngẫu nhiên, ẩn dạng sóng và số đo">
+              <input type="checkbox" id="blindMode"> Nghe mù
+            </label>
+            <div class="vote" id="voteBox" hidden>
+              <button id="vote1" class="secondary">Thích 1 hơn</button>
+              <button id="vote2" class="secondary">Thích 2 hơn</button>
+            </div>
+          </div>
+          <div class="blind-result" id="blindResult"></div>
+        </div>
+
+        <canvas id="playerWave" class="wave player"></canvas>
+
+        <div class="transport">
+          <button id="btnPlay" class="play-btn" disabled aria-label="Phát / dừng">
+            <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="iconPause" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+          </button>
+          <span class="time" id="timeLabel">0:00 / 0:00</span>
+          <div class="job">
+            <div class="progress-wrap"><div class="progress" id="jobBar"></div></div>
+            <span class="status" id="statusText">Đang khởi động...</span>
+          </div>
+        </div>
+
+        <div class="metrics" id="metrics"></div>
+        <div class="keys-hint"><kbd>Space</kbd> phát / dừng <kbd>X</kbd> đổi A/B <kbd>1</kbd><kbd>2</kbd> nghe mù</div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2><span class="step">03</span>Tinh chỉnh</h2>
+          <div class="head-actions">
+            <label class="check"><input type="checkbox" id="autoPreview" checked> Tự render lại khi chỉnh</label>
+            <button id="btnReset" class="btn sm">Về mặc định</button>
+          </div>
+        </div>
+        <div class="stem-row">
+          <label class="switch">
+            <input type="checkbox" id="stemMode" disabled>
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-label">Chế độ Stem AI</span>
+          </label>
+          <span class="muted" id="stemHint">Đang kiểm tra...</span>
+          <button class="btn sm" id="btnInstallStems" hidden>Tải về…</button>
+        </div>
+        <div class="stem-row">
+          <label class="switch">
+            <input type="checkbox" id="restoreMode" disabled>
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-label">Bù dải cao AI</span>
+          </label>
+          <span class="muted" id="restoreHint">Đang kiểm tra...</span>
+          <button class="btn sm" id="btnInstallRestore" hidden>Tải về…</button>
+        </div>
+        <div class="pitch-mode">
+          <div class="seg">
+            <button id="modeVinyl" class="active">Vinyl</button>
+            <button id="modeLock">Khóa tông</button>
+          </div>
+          <span class="muted" id="modeHint"></span>
+        </div>
+        <div class="knobs" id="knobs"></div>
+      </section>
+
+      <section class="card actions-card">
+        <button id="btnPreview" class="primary" disabled>Nghe thử 30 giây</button>
+        <div class="export">
+          <select id="fmt" aria-label="Định dạng xuất">
+            <option value="wav">WAV 24-bit</option>
+            <option value="mp3">MP3 320k</option>
+            <option value="flac">FLAC</option>
+          </select>
+          <button id="btnExport" class="secondary" disabled>Xuất cả bài</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="cta" id="cta">
+    <span class="dot"></span>
+    <div class="export-result" id="exportResult"></div>
+    <button id="btnToVideo" class="primary" disabled title="Chưa xuất cả bài thì tự xuất WAV trước">Sang tab Render &amp; Xuất →</button>
+  </div>
+
+  <div class="modal" id="featModal" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="featTitle">
+      <h3 id="featTitle"></h3>
+      <p id="featText"></p>
+      <p class="muted small" id="featMo"></p>
+      <label class="feat-bien" id="featBienRow" hidden>Bản torch
+        <select id="featBien">
+          <option value="cuda">GPU (CUDA): nhanh hơn, nặng hơn</option>
+          <option value="cpu">CPU: nhẹ hơn, chậm hơn</option>
+        </select>
+      </label>
+      <div class="pbar" id="featBarWrap" hidden><i id="featBar"></i></div>
+      <p class="small muted" id="featStage" hidden></p>
+      <div class="warnbox err" id="featErr" hidden></div>
+      <div class="modal-actions">
+        <button class="primary" id="featGo">Tải về</button>
+        <button class="btn" id="featLater">Để sau</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <audio id="vAudio" preload="auto"></audio>
+
+  <audio id="audioA" preload="auto"></audio>
+  <audio id="audioB" preload="auto"></audio>
+  <audio id="audioC" preload="auto"></audio>
+  <script src="/static/studio.js"></script>
+</body>
+</html>

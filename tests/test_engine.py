@@ -295,6 +295,63 @@ class TestRemixEngine(unittest.TestCase):
         split = np.concatenate([lim()(np.ascontiguousarray(hot[c:c + 1]), self.sr) for c in range(2)])
         self.assertFalse(np.array_equal(split, lim()(hot, self.sr)))
 
+    def test_19_chunked_true_peak_equals_one_shot(self):
+        """web_studio.true_peak_db (chunks + halo, threads) reports the one-shot 4x oversampled peak exactly."""
+        from scipy import signal
+        from unittest import mock
+        import web_studio
+        rng = np.random.default_rng(11)
+        for n in (130, 5000, 44100 * 3 + 7):
+            x = (0.2 * rng.standard_normal((2, n))).astype(np.float32)
+            for spike in (0, n // 3, 997, n - 1):  # peaks on and next to chunk borders
+                y = x.copy()
+                y[:, min(spike, n - 1)] = 0.9
+                ref = round(20.0 * np.log10(float(np.max(np.abs(signal.resample_poly(y, 4, 1, axis=1)))) + 1e-12), 2)
+                with mock.patch.object(web_studio, "TP_CHUNK", 997):
+                    self.assertEqual(web_studio.true_peak_db(y), ref, (n, spike))
+
+    def test_20_export_in_background_and_early_preview(self):
+        """A full export does not block previews (its DSP holds _export_lock, not _render_lock); a preview is
+        published as 'audio' before its true-peak, and the original side is reused for the same section."""
+        import threading
+        from unittest import mock
+        import web_studio as W
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "song.wav")
+            save_audio(src, create_synthetic_music_mix(self.sr, duration_sec=4.0), self.sr)
+            gate, seen = threading.Event(), []
+            real_tp = W.true_peak_db
+
+            def slow_tp(y):          # the preview job waits here: its 'audio' state must be visible meanwhile
+                if not gate.is_set():
+                    seen.append(dict(prev["job"]))
+                    gate.set()
+                return real_tp(y)
+            prev = {}
+            with mock.patch.multiple(W, OUTPUT_DIR=tmp, PREVIEW_DIR=os.path.join(tmp, "p")), \
+                    mock.patch.object(W, "true_peak_db", slow_tp):
+                os.makedirs(W.PREVIEW_DIR)
+                W._audio_cache["path"] = None
+                W._orig_cache.clear()
+                with W._export_lock:     # an export busy in its DSP
+                    prev["job"] = job = W.new_job()
+                    t = threading.Thread(target=W.run_render, args=(job, src, "nightcore", {}, "preview", 0.0, "wav"))
+                    t.start()
+                    t.join(60)
+                    self.assertEqual(job["state"], "done", job["error"])
+                self.assertEqual(seen[0]["state"], "audio")
+                self.assertIsNone(seen[0]["result"]["remix_true_peak"])
+                self.assertTrue(os.path.isfile(W._media[seen[0]["result"]["remix_url"].rsplit("/", 1)[-1]]))
+                self.assertIsNotNone(job["result"]["remix_true_peak"])
+                job2 = W.new_job()
+                W.run_render(job2, src, "slowed_reverb", {}, "preview", 0.0, "wav")
+                self.assertEqual(job2["result"]["orig_url"], job["result"]["orig_url"])
+                full = W.new_job()
+                W.run_render(full, src, "nightcore", {}, "full", 0.0, "wav")
+                self.assertEqual(full["state"], "done", full["error"])
+                self.assertTrue(os.path.isfile(full["result"]["output_path"]))
+                W._audio_cache["path"] = None
+
     @staticmethod
     def _noise(sr: int, seconds: float, cut_hz: float = 0.0, seed: int = 5) -> np.ndarray:
         """Stereo noise with correlated channels; cut_hz > 0 removes everything above it like a codec does."""
@@ -350,6 +407,50 @@ class TestRemixEngine(unittest.TestCase):
         del calls[:]
         self.assertIsNone(restore_delta(self._noise(44100, 4), 44100, model=hiss))
         self.assertEqual(calls, [])
+
+    def test_23_restore_switch_in_the_studio(self):
+        """Tab 1's switch: a full-band source renders the very same file with it on (the model is never loaded); a
+        cut source gets the delta added before the remix and the delta is cached per song."""
+        from unittest import mock
+        import core.restore as R
+        import web_studio as W
+        used = []
+
+        def fake(x):
+            used.append(1)
+            return x + 0.05 * np.random.default_rng(x.shape[1]).standard_normal(x.shape).astype(np.float32)
+
+        def render(src, restore):
+            job = W.new_job()
+            W.run_render(job, src, "slowed_reverb", {}, "preview", 0.0, "wav", False, restore)
+            self.assertEqual(job["state"], "done", job["error"])
+            audio, _ = load_audio(W._media[job["result"]["remix_url"].rsplit("/", 1)[-1]])
+            return job["result"], audio
+        with tempfile.TemporaryDirectory() as tmp:
+            full, cut = os.path.join(tmp, "full.wav"), os.path.join(tmp, "cut.wav")
+            save_audio(full, self._noise(self.sr, 4), self.sr)
+            save_audio(cut, self._noise(self.sr, 4, 16000), self.sr)
+            with mock.patch.multiple(W, OUTPUT_DIR=tmp, PREVIEW_DIR=os.path.join(tmp, "p"),
+                                     RESTORE_DIR=os.path.join(tmp, "r")), \
+                    mock.patch.object(R, "restore_available", lambda: True), \
+                    mock.patch.object(R, "_load_model", lambda: fake):
+                os.makedirs(W.PREVIEW_DIR)
+                W._audio_cache["path"] = None
+                W._orig_cache.clear()
+                (off, a), (on, b) = render(full, False), render(full, True)
+                self.assertFalse(off["restore"] or on["restore"] or used)
+                np.testing.assert_array_equal(a, b)
+                (off, a), (on, b) = render(cut, False), render(cut, True)
+                self.assertTrue(on["restore"] and not off["restore"] and used)
+                self.assertFalse(np.array_equal(a, b))
+                self.assertEqual(len(os.listdir(W.RESTORE_DIR)), 1)
+                W._audio_cache["path"] = None                 # a new session: the FLAC cache answers
+                del used[:]
+                again, c = render(cut, True)
+                self.assertTrue(again["restore"] and not used)
+                np.testing.assert_allclose(b, c, atol=2e-4)   # 24-bit cache of the delta, 16-bit preview file
+                W._audio_cache["path"] = None
+
 
 
 if __name__ == "__main__":
