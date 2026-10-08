@@ -1,0 +1,8 @@
+numpy==2.2.6
+scipy==1.17.1
+soundfile==0.14.0
+pyloudnorm==0.2.0
+pedalboard==0.9.25
+# Optional - Stem AI mode (needs torch; a CUDA build is much faster):
+# demucs==4.1.0
+# External: ffmpeg on PATH (MP3/M4A decode, MP3 encode)

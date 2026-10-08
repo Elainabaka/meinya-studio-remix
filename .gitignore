@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.log
+
+# Your music and rendered audio: never commit (copyright, large files)
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg
+*.aac
+*.opus
+nhạc test/
+output/
+.studio_cache/
+
+# Secrets (OAuth, tokens)
+secret/
+.env
+*secret*
