@@ -1,4 +1,4 @@
-# Studio Remix
+# Meinya Studio Remix
 
 Công cụ dòng lệnh (Python) remix âm thanh: biến một bài hát thành bản Nightcore, Slowed + Reverb, Sped Up, Vaporwave, Lo-Fi, Bass Boost hay 8D. Chuỗi xử lý gồm đổi tốc độ (kiểu vinyl hoặc giữ tông), định hình transient, de-esser, EQ và bão hòa, reverb kiểu Abbey Road, rồi mastering về mức LUFS mục tiêu với trần true-peak.
 
