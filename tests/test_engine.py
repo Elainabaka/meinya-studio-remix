@@ -3,9 +3,12 @@ Comprehensive Unit Tests & Self-Correction Validation Suite
 Validates DSP integrity, psychoacoustic filters, preset execution, and true-peak protection.
 """
 
+import contextlib
 import os
+import socket
 import tempfile
 import unittest
+from unittest import mock
 import numpy as np
 
 from tests.generate_signals import (
@@ -19,6 +22,30 @@ from core.sweetener import apply_sweetener, SweetenerConfig
 from core.reverb_engine import apply_abbey_road_reverb, ReverbConfig
 from core.mastering import master_audio, MasteringConfig
 from presets.registry import list_presets, get_preset
+
+
+@contextlib.contextmanager
+def no_network(blocked: list):
+    """Refuse every outgoing connection and put the HuggingFace Hub offline: a test never downloads.
+
+    Each refused attempt is appended to `blocked`, so a test can tell "the model is not on this
+    machine" (skip) from a real failure.
+    """
+    def refuse(*args, **kwargs):
+        blocked.append(args)
+        raise OSError("network is blocked in tests")
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(mock.patch.dict(os.environ, {"HF_HUB_OFFLINE": "1"}))
+        try:
+            import huggingface_hub.constants as hf_constants   # read at import time: patch the value too
+            stack.enter_context(mock.patch.object(hf_constants, "HF_HUB_OFFLINE", True))
+        except ImportError:
+            pass
+        stack.enter_context(mock.patch.object(socket.socket, "connect", refuse))
+        stack.enter_context(mock.patch.object(socket, "create_connection", refuse))
+        stack.enter_context(mock.patch.object(socket, "getaddrinfo", refuse))
+        yield
 
 
 class TestRemixEngine(unittest.TestCase):
@@ -230,12 +257,22 @@ class TestRemixEngine(unittest.TestCase):
         np.testing.assert_allclose(loud, out * 3.0, atol=1e-4)
 
     def test_15_ai_stem_separation(self):
-        """Demucs separation returns 4 finite stems of the input length (skipped if not installed)."""
+        """Demucs separation returns 4 finite stems of the input length.
+
+        Offline: skipped if torch/demucs are not installed or the model is not on this machine yet.
+        """
         from core.stems import stems_available, separate_stems, STEM_NAMES
         if not stems_available():
             self.skipTest("torch/demucs not installed")
         clip = self.mix[:, : self.sr * 4]
-        stems = separate_stems(clip, self.sr)
+        blocked = []
+        try:
+            with no_network(blocked):
+                stems = separate_stems(clip, self.sr)
+        except Exception:
+            if blocked:
+                self.skipTest("Demucs model not downloaded yet (the test never downloads it)")
+            raise
         self.assertEqual(set(stems), set(STEM_NAMES))
         for name, stem in stems.items():
             self.assertEqual(stem.shape, clip.shape, name)
